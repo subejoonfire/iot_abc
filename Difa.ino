@@ -3,24 +3,25 @@
 #include <ArduinoJson.h>
 
 // Konfigurasi WiFi
-const char* ssid = "Difa";
-const char* password = "12345678";
+const char *ssid = "Difa";
+const char *password = "12345678";
 
 // Konfigurasi Server (ganti dengan IP server Anda)
-const char* serverUrl = "http://192.168.43.119/iot_abc/api.php";
+const char *serverUrl = "http://192.168.221.66/iot_abc/api.php";
 
 // Pin Sensor
-const int pinHujanDO = 5;   // D1
-const int pinLDRDO = 0;     // D3
-const int pinLED = 2;       // D4
+const int pinHujanDO = 5; // D1
+const int pinLDRDO = 0;   // D3
+const int pinLED = 2;     // D4
 
 // Variabel kontrol manual
 bool manualMode = false;
 bool manualState = LOW;
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
-  
+
   // Inisialisasi Pin
   pinMode(pinHujanDO, INPUT);
   pinMode(pinLDRDO, INPUT);
@@ -30,7 +31,8 @@ void setup() {
   // Koneksi WiFi
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -38,21 +40,26 @@ void setup() {
   Serial.println(WiFi.localIP());
 }
 
-void loop() {
+void loop()
+{
   // Baca sensor
   int statusHujan = digitalRead(pinHujanDO);
   int statusLDR = digitalRead(pinLDRDO);
-  
+
   // Kirim data ke server setiap 3 detik
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED)
+  {
     sendSensorData(statusHujan, statusLDR);
     getLampCommand();
   }
 
   // Kontrol lampu
-  if (manualMode) {
+  if (manualMode)
+  {
     digitalWrite(pinLED, manualState);
-  } else {
+  }
+  else
+  {
     // Mode otomatis
     digitalWrite(pinLED, (statusHujan == LOW || statusLDR == HIGH) ? HIGH : LOW);
   }
@@ -60,10 +67,11 @@ void loop() {
   delay(3000);
 }
 
-void sendSensorData(int hujan, int ldr) {
+void sendSensorData(int hujan, int ldr)
+{
   HTTPClient http;
   WiFiClient client;
-  
+
   http.begin(client, String(serverUrl) + "?action=save_sensor");
   http.addHeader("Content-Type", "application/json");
 
@@ -71,36 +79,41 @@ void sendSensorData(int hujan, int ldr) {
   DynamicJsonDocument doc(128);
   doc["hujan"] = (hujan == LOW) ? "Ya" : "Tidak";
   doc["cahaya"] = (ldr == HIGH) ? "Gelap" : "Terang";
-  
+
   String payload;
   serializeJson(doc, payload);
 
   int httpCode = http.POST(payload);
-  
-  if (httpCode > 0) {
+
+  if (httpCode > 0)
+  {
     Serial.printf("Data sent! Code: %d\n", httpCode);
-  } else {
+  }
+  else
+  {
     Serial.printf("HTTP error: %s\n", http.errorToString(httpCode).c_str());
   }
-  
+
   http.end();
 }
 
-void getLampCommand() {
+void getLampCommand()
+{
   HTTPClient http;
   WiFiClient client;
-  
+
   http.begin(client, String(serverUrl) + "?action=get_lamp");
   int httpCode = http.GET();
 
-  if (httpCode == HTTP_CODE_OK) {
+  if (httpCode == HTTP_CODE_OK)
+  {
     String response = http.getString();
     DynamicJsonDocument doc(64);
     deserializeJson(doc, response);
-    
+
     manualMode = doc["manual_mode"];
     manualState = doc["lamp_status"] ? HIGH : LOW;
   }
-  
+
   http.end();
 }
